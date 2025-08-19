@@ -1,0 +1,53 @@
+# deploy/production/deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: erp-backend
+  labels:
+    app: erp
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: erp
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: erp
+        tier: backend
+    spec:
+      containers:
+      - name: erp-backend
+        image: erp-registry.com/erp-backend:1.0.0
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: erp-config
+        - secretRef:
+            name: erp-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10

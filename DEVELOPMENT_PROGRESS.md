@@ -2,7 +2,7 @@
 
 **项目名称**: ERP System  
 **版本**: 1.0.0  
-**生成时间**: 2025/8/19 12:12:32  
+**生成时间**: 2025/8/19 15:35:50  
 **技术栈**: Node.js + Express + PostgreSQL + Sequelize + React + Jest  
 
 ---
