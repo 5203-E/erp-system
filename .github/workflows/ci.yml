@@ -1,0 +1,99 @@
+name: ERP CI Pipeline
+on: [push, pull_request]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: erp_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install Backend Dependencies
+      run: npm ci
+      working-directory: ./
+      
+    - name: Install Frontend Dependencies
+      run: npm ci
+      working-directory: ./client
+      
+    - name: Setup Environment Variables
+      run: |
+        echo "NODE_ENV=test" >> $GITHUB_ENV
+        echo "DB_HOST=localhost" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+        echo "DB_USER=postgres" >> $GITHUB_ENV
+        echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
+        echo "DB_NAME=erp_test" >> $GITHUB_ENV
+        echo "JWT_SECRET=test_jwt_secret_key_for_ci_pipeline" >> $GITHUB_ENV
+        echo "JWT_REFRESH_SECRET=test_refresh_secret_for_ci_pipeline" >> $GITHUB_ENV
+        
+    - name: Wait for PostgreSQL
+      run: |
+        while ! nc -z localhost 5432; do
+          echo "Waiting for PostgreSQL..."
+          sleep 1
+        done
+        
+    - name: Run Database Migrations
+      run: npm run migrate:test
+      working-directory: ./
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: erp_test
+        
+    - name: Run Backend Tests
+      run: npm run test
+      working-directory: ./
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_USER: postgres
+        DB_PASSWORD: postgres
+        DB_NAME: erp_test
+        
+    - name: Run Frontend Tests
+      run: npm run test
+      working-directory: ./client
+      
+    - name: Build Frontend Production
+      run: npm run build
+      working-directory: ./client
+      
+    - name: Build Backend Production
+      run: npm run build
+      working-directory: ./
+      
+    - name: Upload Test Coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false

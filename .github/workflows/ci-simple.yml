@@ -1,0 +1,52 @@
+name: ERP CI Pipeline (Simple)
+on: [push, pull_request]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install Backend Dependencies
+      run: npm ci
+      working-directory: ./
+      
+    - name: Install Frontend Dependencies
+      run: npm ci
+      working-directory: ./client
+      
+    - name: Run Backend Tests (Unit Tests Only)
+      run: npm run test
+      working-directory: ./
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_USER: test
+        DB_PASSWORD: test
+        DB_NAME: test_db
+        JWT_SECRET: test_secret
+        JWT_REFRESH_SECRET: test_refresh_secret
+        
+    - name: Run Frontend Tests
+      run: npm run test:run
+      working-directory: ./client
+      
+    - name: Build Frontend Production
+      run: npm run build
+      working-directory: ./client
+      
+    - name: Build Backend Production
+      run: npm run build:backend
+      working-directory: ./
+      
+    - name: Code Quality Check
+      run: npm run code-quality
+      working-directory: ./
